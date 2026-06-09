@@ -1,0 +1,47 @@
+// TTN Payload Formatter (JavaScript) — Uplink decoder
+function decodeUplink(input) {
+  try {
+    const bytes = input.bytes;
+
+    if (!Array.isArray(bytes) || bytes.length < 11) {
+      return { errors: [`Expected 11 bytes, got ${bytes ? bytes.length : 0}`] };
+    }
+
+    // Big-endian uint16: (BYTE0<<8) + BYTE1
+    const battery_raw     = readU16BE(bytes, 0);   // BYTE0-1
+    const humidity_raw    = readU16BE(bytes, 2);   // BYTE2-3
+    const temperature_raw = readU16BE(bytes, 4);   // BYTE4-5
+    const radon_bq        = readU16BE(bytes, 6);   // BYTE6-7  Offset 0 Ratio 1
+    const co2_raw         = readU16BE(bytes, 8);   // BYTE8-9
+    const cycle           = bytes[10] & 0xff;      // BYTE10
+
+    return {
+      data: {
+        payload_hex: bytesToHex(bytes),
+
+        battery_raw,
+        humidity_raw,
+        temperature_raw,
+
+        radon_bq,          // already Bq (Ratio 1, Offset 0)
+        co2_raw,
+
+        cycle
+      }
+    };
+  } catch (e) {
+    return { errors: [String(e && e.message ? e.message : e)] };
+  }
+}
+
+function readU16BE(bytes, i) {
+  return ((bytes[i] & 0xff) << 8) | (bytes[i + 1] & 0xff);
+}
+
+function bytesToHex(bytes) {
+  let hex = "";
+  for (let i = 0; i < bytes.length; i++) {
+    hex += (bytes[i] & 0xff).toString(16).padStart(2, "0");
+  }
+  return hex;
+}
